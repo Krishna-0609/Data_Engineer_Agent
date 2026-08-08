@@ -80,7 +80,7 @@ services:
   # pgAdmin (Database Management UI)
   # ---------------------------------------------------------------------------
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:8
     container_name: dea-pgadmin
     restart: unless-stopped
     environment:
@@ -90,7 +90,8 @@ services:
     ports:
       - "5051:5050"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   # ---------------------------------------------------------------------------
   # Apache Airflow (Init, Webserver, Scheduler)
@@ -98,17 +99,19 @@ services:
   airflow-init:
     image: apache/airflow:2.8.1-python3.11
     container_name: dea-airflow-init
+    user: "0:0"
     environment:
       - AIRFLOW__CORE__LOAD_EXAMPLES=false
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
     volumes:
       - ../dags:/opt/airflow/dags
       - airflow_data:/opt/airflow
-    user: "0:0"
     command: >
       bash -c "
+        mkdir -p /opt/airflow &&
         airflow db init &&
-        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@agent.com --password admin || true
+        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@agent.com --password admin || true &&
+        chmod -R 777 /opt/airflow
       "
 
   airflow-webserver:
