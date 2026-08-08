@@ -1,0 +1,76 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+.venv/
+venv/
+env/
+
+# =========================
+# Node.js
+# =========================
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# =========================
+# Environment
+# =========================
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =========================
+# Testing
+# =========================
+.coverage
+htmlcov/
+.pytest_cache/
+coverage/
+*.lcov
+
+# =========================
+# Docker
+# =========================
+*.log
+docker-compose.override.yml
+.docker/
+
+# =========================
+# Terraform
+# =========================
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+
+# =========================
+# Misc
+# =========================
+*.bak
+*.tmp
+*.temp
