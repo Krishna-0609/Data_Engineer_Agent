@@ -23,6 +23,7 @@ import {
   Wind,
   RefreshCw,
   ShieldCheck,
+  ExternalLink,
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { formatDate } from "@/lib/utils";
@@ -304,6 +305,16 @@ export default function PipelinesPage() {
                       </div>
 
                       <div className="flex items-center gap-3">
+                        <a
+                          href="http://localhost:8080"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-500/40 text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-md"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Open Airflow UI (8080)
+                        </a>
+
                         <button
                           onClick={handleDownloadAirflow}
                           className="bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-md"

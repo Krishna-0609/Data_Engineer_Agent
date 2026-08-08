@@ -71,6 +71,7 @@ class AgentService:
         pipeline.activate()
 
         created = await self._pipeline_repo.create(pipeline)
+        self._sync_airflow_dag(created)
         logger.info("agent.pipeline_generated", pipeline_id=str(created.id), name=name)
         return created
 
@@ -95,8 +96,38 @@ class AgentService:
         pipeline.update_spec(updated_spec)
 
         updated = await self._pipeline_repo.update(pipeline)
+        self._sync_airflow_dag(updated)
         logger.info("agent.pipeline_refined", pipeline_id=pipeline_id, version=updated.version)
         return updated
+
+    def _sync_airflow_dag(self, pipeline: Pipeline) -> None:
+        """Automatically writes generated Airflow DAG script to shared ./dags directory."""
+        import os
+        try:
+            from app.application.exporters.airflow_exporter import AirflowDAGExporter
+            dags_dir = os.getenv("DAGS_DIR")
+            if not dags_dir:
+                candidates = [
+                    "/app/dags",
+                    "/home/ond/Data_Engineer_Agent/dags",
+                    os.path.abspath("./dags"),
+                    os.path.abspath("../dags"),
+                ]
+                for candidate in candidates:
+                    if os.path.exists(candidate) or os.path.exists(os.path.dirname(candidate)):
+                        dags_dir = candidate
+                        break
+            if dags_dir:
+                os.makedirs(dags_dir, exist_ok=True)
+                exporter = AirflowDAGExporter()
+                code = exporter.export_dag_code(pipeline)
+                filename = f"airflow_dag_{str(pipeline.id)[:8]}.py"
+                filepath = os.path.join(dags_dir, filename)
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(code)
+                logger.info("airflow_dag.synced", filepath=filepath)
+        except Exception as e:
+            logger.warning("airflow_dag.sync_failed", error=str(e))
 
     def _analyze_intent(self, prompt: str) -> dict[str, Any]:
         """Infers pipeline source, transformations, and sink targets from user text."""
