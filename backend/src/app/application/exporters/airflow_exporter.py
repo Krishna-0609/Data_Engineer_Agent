@@ -7,6 +7,7 @@ executable Apache Airflow DAG Python scripts.
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -25,47 +26,53 @@ class AirflowDAGExporter:
         code_dict = spec.get("code", {})
         python_code = code_dict.get("python", "")
         
-        dag_id = self._slugify(pipeline.name)
+        dag_id = self._slugify_identifier(pipeline.name, prefix="dag")
         schedule = spec.get("parameters", {}).get("schedule_interval", "@daily")
         max_retries = spec.get("parameters", {}).get("max_retries", 2)
 
         # Sanitize Python code indentation for embedding
         embedded_python = self._format_embedded_code(python_code)
+        
+        # Safely escape description and tag strings for Python literal inclusion
+        desc_escaped = json.dumps(pipeline.description or "AI Generated DAG")
+        tag_source = self._slugify_identifier(spec.get("source", "data"), prefix="src")
 
         # Construct Airflow tasks
         task_definitions = []
-        task_ids = []
+        task_var_names = []
 
         for index, node in enumerate(nodes, 1):
-            n_id = self._slugify(node.get("id", f"step_{index}"))
+            n_raw = node.get("id") or f"step_{index}"
+            n_id = self._slugify_identifier(n_raw, prefix=f"task_{index}")
             label = node.get("label", f"Task {index}")
             node_type = node.get("type", "transformer")
             
-            task_ids.append(n_id)
-            task_definitions.append(f"""
-def task_{n_id}_callable(**context):
-    \"\"\"{label} ({node_type})\"\"\"
-    print("Airflow Task Executing: {label}")
-    # Injected runtime context
-    ti = context.get('ti')
-    if ti:
-        ti.xcom_push(key='status_{n_id}', value='SUCCESS')
-    return {{"node_id": "{n_id}", "status": "COMPLETED"}}
+            var_name = f"{n_id}_task"
+            task_var_names.append(var_name)
+            
+            task_definitions.append(f"""    def task_{n_id}_callable(**context):
+        \"\"\"{label} ({node_type})\"\"\"
+        print("Airflow Task Executing: {label}")
+        ti = context.get('ti')
+        if ti:
+            ti.xcom_push(key='status_{n_id}', value='SUCCESS')
+        return {{"node_id": "{n_id}", "status": "COMPLETED"}}
 
-{n_id}_task = PythonOperator(
-    task_id='{n_id}',
-    python_callable=task_{n_id}_callable,
-    dag=dag,
-)""")
+    {var_name} = PythonOperator(
+        task_id={json.dumps(n_id)},
+        python_callable=task_{n_id}_callable,
+        dag=dag,
+    )""")
 
         # Build task dependency chain (e.g. task1 >> task2 >> task3)
-        if len(task_ids) > 1:
-            dependency_chain = " >> ".join([f"{tid}_task font-mono" for tid in task_ids]).replace(" font-mono", "")
-            dependency_code = f"# Task Dependency Chain\n{dependency_chain}"
-        elif len(task_ids) == 1:
-            dependency_code = f"# Single Task\n{task_ids[0]}_task"
+        if len(task_var_names) > 1:
+            dependency_code = "    " + " >> ".join(task_var_names)
+        elif len(task_var_names) == 1:
+            dependency_code = f"    # Single Task Execution\n    {task_var_names[0]}"
         else:
-            dependency_code = "# No tasks defined"
+            dependency_code = "    # No tasks defined\n    pass"
+
+        tasks_block = "\n\n".join(task_definitions) if task_definitions else ""
 
         airflow_script = f'''"""
 Apache Airflow DAG — {pipeline.name}
@@ -95,26 +102,31 @@ default_args = {{
 
 # --- DAG Definition ---
 with DAG(
-    dag_id='{dag_id}',
+    dag_id={json.dumps(dag_id)},
     default_args=default_args,
-    description='{pipeline.description or "AI Generated DAG"}',
+    description={desc_escaped},
     schedule_interval='{schedule}',
     catchup=False,
-    tags=['ai_generated', 'etl', '{spec.get("source", "data").lower()}'],
+    tags=['ai_generated', 'etl', {json.dumps(tag_source)}],
 ) as dag:
 
-{''.join(task_definitions)}
+{tasks_block}
 
-    {dependency_code}
+{dependency_code}
 '''
         return airflow_script.strip()
 
-    def _slugify(self, text: str) -> str:
+    def _slugify_identifier(self, text: str, prefix: str = "item") -> str:
         slug = re.sub(r"[^\w\s-]", "", text).strip().lower()
         slug = re.sub(r"[-\s]+", "_", slug)
-        return slug or "pipeline_dag"
+        if not slug:
+            return prefix
+        if slug[0].isdigit():
+            slug = f"{prefix}_{slug}"
+        return slug
 
     def _format_embedded_code(self, code: str) -> str:
         if not code:
             return "# No inline python code provided."
         return "\n".join([line for line in code.splitlines() if not line.startswith("if __name__ ==")])
+

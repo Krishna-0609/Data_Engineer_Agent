@@ -50,7 +50,7 @@ class TestExportersUnit:
 
         assert "from airflow import DAG" in code
         assert "from airflow.operators.python import PythonOperator" in code
-        assert "dag_id='sales_analytics_etl'" in code
+        assert 'dag_id="sales_analytics_etl"' in code
         assert "extract_step_task" in code
         assert "transform_step_task" in code
         assert "load_step_task" in code

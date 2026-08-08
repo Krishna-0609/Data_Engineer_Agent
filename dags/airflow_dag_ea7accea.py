@@ -26,14 +26,15 @@ default_args = {
 
 # --- DAG Definition ---
 with DAG(
-    dag_id='pipeline_0',
+    dag_id="pipeline_0",
     default_args=default_args,
-    description='Test 0',
+    description="Test 0",
     schedule_interval='@daily',
     catchup=False,
-    tags=['ai_generated', 'etl', 'data'],
+    tags=['ai_generated', 'etl', "data"],
 ) as dag:
 
 
 
     # No tasks defined
+    pass
