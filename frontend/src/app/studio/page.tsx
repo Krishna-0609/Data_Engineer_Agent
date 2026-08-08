@@ -66,7 +66,7 @@ export default function StudioPage() {
     setGeneratedResult(null);
 
     try {
-      const res = await apiClient.post("/agent/generate-pipeline", {
+      const res = await apiClient.post("/agent/generate", {
         project_id: selectedProjectId,
         prompt: prompt,
       });
@@ -213,18 +213,26 @@ export default function StudioPage() {
                           {node.type}
                         </span>
                       </div>
-                      <h5 className="text-xs font-bold text-white">{node.name}</h5>
+                      <h5 className="text-xs font-bold text-white">{node.label || node.name || node.id}</h5>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Generated Python Code Inspector */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Generated Python Transformations</h4>
-                <pre className="rounded-xl bg-slate-950 p-4 font-mono text-xs text-indigo-300 border border-indigo-500/20 overflow-x-auto max-h-64">
-                  {generatedResult.spec?.python_code || "# Python transformation code synthesized automatically."}
-                </pre>
+              {/* Generated Python & SQL Code Inspector */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Synthesized Python Script</h4>
+                  <pre className="rounded-xl bg-slate-950 p-4 font-mono text-xs text-indigo-300 border border-indigo-500/20 overflow-x-auto max-h-64">
+                    {generatedResult.spec?.code?.python || generatedResult.spec?.python_code || "# Python transformation code synthesized automatically."}
+                  </pre>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Synthesized SQL Query</h4>
+                  <pre className="rounded-xl bg-slate-950 p-4 font-mono text-xs text-purple-300 border border-purple-500/20 overflow-x-auto max-h-64">
+                    {generatedResult.spec?.code?.sql || "-- SQL transformation query synthesized automatically."}
+                  </pre>
+                </div>
               </div>
             </div>
           )}
